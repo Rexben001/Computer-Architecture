@@ -11,27 +11,8 @@ class CPU:
         self.ram = [0] * 255
         self.reg = [0] * 8
         self.pc = 0
+        self.sp = 6
 
-    # def load(self):
-    #     """Load a program into memory."""
-
-    #     address = 0
-
-    #     # For now, we've just hardcoded a program:
-
-    #     program = [
-    #         # From print8.ls8
-    #         0b10000010,  # LDI R0,8
-    #         0b00000000,
-    #         0b00001000,
-    #         0b01000111,  # PRN R0
-    #         0b00000000,
-    #         0b00000001,  # HLT
-    #     ]
-
-    #     for instruction in program:
-    #         self.ram[address] = instruction
-    #         address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -71,6 +52,8 @@ class CPU:
         PRN = 0b01000111
         HLT = 0b00000001
         MUL = 0b10100010
+        POP = 0b01000110
+        PUSH = 0b01000101
         while running:
             IR = self.ram[self.pc]
             operand_a = self.ram_read(self.pc+1)
@@ -78,17 +61,23 @@ class CPU:
 
             if IR == LDI:
                 self.reg[operand_a] = operand_b
-                self.pc += (IR >> 6) + 1
             elif IR == PRN:
                 print(self.reg[operand_a])
-                # mask IR to get the opcode 
-                self.pc += (IR >> 6) + 1
             elif IR == MUL:
                 self.alu('MUL', operand_a, operand_b)
-                self.pc += (IR >> 6) + 1
+            elif IR == PUSH:
+                self.sp -= 1
+                value = self.reg[operand_a]
+                self.ram_write(self.sp, value)
+            elif IR == POP:
+                stack_value = self.ram[self.sp]
+                self.reg[operand_a] = stack_value
+                self.sp += 1
             elif IR == HLT:
                 running = False
-                sys.exit(2)
+                self.pc = 0
+            # mask IR to get the opcode
+            self.pc += (IR >> 6) + 1
 
     def ram_read(self, address):
         return self.ram[address]
