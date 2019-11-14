@@ -2,14 +2,13 @@
 
 import sys
 
+
 LDI = 0b10000010
 PRN = 0b01000111
 HLT = 0b00000001
 MUL = 0b10100010
 POP = 0b01000110
 PUSH = 0b01000101
-CALL = 0b01010000
-RET = 0b00010001
 ADD = 0b10100000
 
 
@@ -21,8 +20,15 @@ class CPU:
         self.ram = [0] * 255
         self.reg = [0] * 16
         self.pc = 0
-        self.sp = 7
-        self.op_pc = False
+        self.sp = 6
+
+        self.branchtable = {}
+        self.branchtable[LDI] = self.ldi
+        self.branchtable[PRN] = self.prn
+        self.branchtable[HLT] = self.hlt
+        self.branchtable[MUL] = self.mul
+        self.branchtable[POP] = self.pop
+        self.branchtable[PUSH] = self.push
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -33,6 +39,39 @@ class CPU:
             self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
+
+    def ldi(self, op_a, op_b):
+        self.reg[op_a] = op_b
+        self.pc += (self.ram[self.pc] >> 6) + 1
+        print(':', self.pc)
+
+    def prn(self, val):
+        print(self.reg[val])
+        self.pc += (self.ram[self.pc] >> 6) + 1
+        print(':', self.pc)
+
+    def hlt(self):
+        sys.exit(2)
+
+    def mul(self, op_a, op_b):
+        self.alu('MUL', op_a, op_b)
+        # print(op_a, op_b)
+        self.pc += (self.ram[self.pc] >> 6) + 1
+        print(':', self.pc)
+
+    def pop(self, val):
+        stack_value = self.ram[self.sp]
+        self.reg[val] = stack_value
+        self.sp += 1
+        self.pc += (self.ram[self.pc] >> 6) + 1
+        print(':', self.pc)
+
+    def push(self, val):
+        self.sp -= 1
+        value = self.reg[val]
+        self.ram_write(self.sp, value)
+        self.pc += (self.ram[self.pc] >> 6) + 1
+        print(':', self.pc)
 
     def trace(self):
         """
@@ -59,42 +98,18 @@ class CPU:
         IR = self.ram[self.pc]
         running = True
         while running:
-
             IR = self.ram[self.pc]
             operand_a = self.ram_read(self.pc+1)
             operand_b = self.ram_read(self.pc+2)
 
-            if IR == LDI:
-                self.reg[operand_a] = operand_b
-            elif IR == PRN:
-                print(self.reg[operand_a])
-            elif IR == MUL:
-                self.alu('MUL', operand_a, operand_b)
-            elif IR == ADD:
-                self.alu('ADD', operand_a, operand_b)
-            elif IR == PUSH:
-                self.sp -= 1
-                value = self.reg[operand_a]
-                self.ram_write(self.sp, value)
-            elif IR == POP:
-                stack_value = self.ram[self.sp]
-                self.reg[operand_a] = stack_value
-                self.sp += 1
-            elif IR == HLT:
-                running = False
-                self.pc = 0
-            elif IR == CALL:
-                self.sp -= 1
-                self.ram_write(self.sp, operand_b)
-                self.pc = self.reg[operand_a]
-                self.op_pc = True
-            elif IR == RET:
-                self.pc = self.ram[self.sp]
-                self.op_pc = True
-                running = False
+            self.branchtable[LDI](operand_a, operand_b)
+            self.branchtable[PUSH](operand_a)
+            self.branchtable[POP](operand_a)
+            self.branchtable[MUL](operand_a, operand_b)
+            self.branchtable[PRN](operand_a)
+            self.branchtable[HLT]()
 
-            # mask IR to get the opcode
-            self.pc += (IR >> 6) + 1
+            # self.pc += (IR >> 6) + 1
 
     def ram_read(self, address):
         return self.ram[address]
