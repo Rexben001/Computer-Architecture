@@ -7,5 +7,10 @@ from cpu import *
 
 cpu = CPU()
 
-cpu.load()
+# cpu.load()
+cpu.load(sys.argv[1])
 cpu.run()
+# for i in cpu.ram:
+#     if i != 0:
+#         print(i)
+
